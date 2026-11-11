@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'supervisor' => \App\Http\Middleware\SupervisorMiddleware::class,
+            'admin.web' => \App\Http\Middleware\AdminWebMiddleware::class,
             'phone.confirmed' => \App\Http\Middleware\CheckPhoneConfirmed::class,
         ]);
     })

@@ -10,7 +10,7 @@ class AuditService
     {
         try {
             AuditLog::create([
-                'user_id'     => auth()->id(),
+                'user_id'     => auth()->id() ?? session('admin_user_id'),
                 'action'      => $action,
                 'entity_type' => $entity ? (is_string($entity) ? $entity : get_class($entity)) : null,
                 'entity_id'   => is_object($entity) && isset($entity->id) ? $entity->id : null,

@@ -70,9 +70,38 @@ class AuthController extends Controller
             'password'    => 'required|string',
         ]);
 
+        // ==================== تسجيل محاولة الدخول ====================
+        $ip = $request->ip();
+
+        $maxAttempts = (int) \App\Models\SystemSetting::getValue('max_login_attempts', 5);
+        $lockoutMinutes = (int) \App\Models\SystemSetting::getValue('lockout_minutes', 15);
+
+        // التحقق من عدد المحاولات الفاشلة حسب إعدادات النظام الديناميكية
+        if (\App\Models\LoginAttempt::isBlocked($request->user_number, $maxAttempts, $lockoutMinutes)) {
+            return response()->json([
+                'error' => "تم حظر حسابك مؤقتاً بسبب محاولات دخول متعددة ({$maxAttempts} محاولات). حاول بعد {$lockoutMinutes} دقيقة.",
+                'blocked_until' => now()->addMinutes($lockoutMinutes)->toDateTimeString(),
+            ], 429);
+        }
+
         $user = User::where('user_number', $request->user_number)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        // تسجيل المحاولة (فاشلة افتراضياً، تُحدَّث إذا نجحت)
+        $loginAttempt = \App\Models\LoginAttempt::create([
+            'identifier'   => $request->user_number,
+            'ip_address'   => $ip,
+            'success'      => false,
+            'attempted_at' => now(),
+        ]);
+
+        $credentialsValid = $user && Hash::check($request->password, $user->password);
+
+        if ($credentialsValid) {
+            // تحديث المحاولة الحالية كناجحة
+            $loginAttempt->update(['success' => true]);
+        }
+
+        if (!$credentialsValid) {
             return response()->json(['error' => 'رقم المستخدم أو كلمة المرور غير صحيحة'], 401);
         }
 
@@ -221,6 +250,15 @@ class AuthController extends Controller
 
     public function getDestinations()
     {
+        try {
+            $destinations = \App\Models\Destination::where('is_active', true)->pluck('name')->toArray();
+            if (!empty($destinations)) {
+                return response()->json($destinations);
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
         return response()->json([
             'صنعاء',
             'عدن',
@@ -237,6 +275,15 @@ class AuthController extends Controller
 
     public function getCompanies()
     {
+        try {
+            $companies = \App\Models\RemittanceCompany::where('is_active', true)->pluck('name')->toArray();
+            if (!empty($companies)) {
+                return response()->json($companies);
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
         return response()->json([
             'بنك الكريمي',
             'بنك الأمل',

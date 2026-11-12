@@ -1,59 +1,42 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# واجهة نظام الحوالات المالية
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+واجهة REST API مبنية بـ **Laravel** لإدارة حسابات المستخدمين والحوالات والعمليات المالية ولوحة الإدارة. هذه المنظومة تتعامل مع أرصدة وأموال؛ يلزم اختبارها ومراجعتها أمنياً وتشغيلياً قبل ربطها بأموال حقيقية.
 
-## About Laravel
+## ما يقدمه المشروع
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- تسجيل المستخدمين، تسجيل الدخول عبر Sanctum، التحقق من البريد، استعادة كلمة المرور وإدارة الملف الشخصي والأجهزة المرافقة.
+- إنشاء الحوالات والبحث عنها ودفعها وإلغاؤها، وتتبع سجل الحوالة وحركات الرصيد.
+- حدود تحويل يومية حسب المستخدم، موافقات مشرف/مدير، طلبات تعديل أو إلغاء، وقوائم حظر.
+- صلاحيات Admin وSupervisor ومستخدم عادي، مع دعم الفروع.
+- إعداد قواعد العمولات وأسعار الصرف والخزائن والشركات والوجهات وإعدادات النظام.
+- تقارير الحوالات، إحصاءات، تصدير CSV، إشعارات داخلية وسجل تدقيق.
+- واجهة إدارة Blade، بالإضافة إلى نقاط API المعرّفة في `routes/api.php` و`routes/web.php`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## التقنيات والملفات
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP وLaravel وLaravel Sanctum.
+- SQLite للاختبارات وفق `phpunit.xml`؛ إعداد الاتصال الفعلي يعتمد على بيئة النشر.
+- `database/migrations/` مخطط البيانات والتغييرات، و`database/seeders/` لتهيئة البيانات الأولية.
+- `resources/views/admin/` صفحات الإدارة، و`app/Http/Controllers/` واجهات التطبيق.
+- إعدادات نشر أولية موجودة في `Dockerfile` و`Procfile` و`railway.json` و`nixpacks.toml`؛ يلزم التحقق منها على منصة الاستضافة المختارة.
 
-## Learning Laravel
+## التشغيل المحلي
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+1. جهّز إصدار PHP وامتداداته المتوافقة مع `composer.json`، وComposer وقاعدة بيانات مناسبة.
+2. ثبّت حزم Composer، انسخ `.env.example` إلى `.env`، واضبط `APP_KEY` وقاعدة البيانات والبريد الإلكتروني ومتغيرات البيئة اللازمة دون وضع الأسرار في Git.
+3. شغّل ترحيلات قاعدة البيانات، ثم شغّل التطبيق عبر Artisan. راجع `README` وإعدادات Laravel قبل التنفيذ في بيئة قائمة؛ لا تُشغّل الترحيلات على قاعدة إنتاج قبل نسخة احتياطية ومراجعة أثرها.
+4. نفّذ الاختبارات عبر PHPUnit. يجب تهيئة مستخدم إداري بطريقة آمنة؛ راجع `database/seeders/AdminSeeder.php` قبل استخدامه.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ملاحظات الأمان والنواقص قبل الإنتاج
 
-## Laravel Sponsors
+- جرى تقييد تفاصيل الحوالة وسجلها وتقاريرها بحسب الدور وصاحب الحساب/الفرع. المشرف الذي لا يملك فرعاً لا يرى جميع الفروع.
+- ما زال يلزم إجراء مراجعة متخصصة لمسارات الأموال، وبالأخص ذرّية خصم/إرجاع الرصيد والخزائن، منع تكرار صرف الحوالة تحت الطلبات المتزامنة، وسلامة سجلات دفتر الأستاذ. لا تعتبر هذه النسخة جاهزة لتداول أموال حقيقية قبل إغلاق هذه البنود واختبارها بمعاملات متزامنة.
+- أضف اختبارات تكامل تغطي صلاحيات كل دور، التحويل والإلغاء والصرف والموافقات والحدود اليومية، إعادة المحاولة، التزامن، والتحقق من دفتر الأستاذ. الاختبارات الحالية أمثلة Laravel أساسية فقط.
+- تحقق من قيود قاعدة البيانات والفهارس والمفاتيح الفريدة، سياسات النسخ الاحتياطي والاستعادة، إخفاء البيانات الحساسة، مراقبة الأخطاء، إدارة الأسرار، وإعداد HTTPS والبريد وقوائم CORS ومحددات المعدل.
+- بعض مسارات الإعدادات واللوحة تعرض بيانات مالية شاملة؛ أبقها مقصورة على الإدارة المخولة واختبرها على مستوى المسار والبيانات.
+- راجع الحد الأدنى لكلمات المرور، تدوير الجلسات بعد تغيير كلمة المرور، ومعدل طلب OTP ومحاولاته، وتأكد أن السجلات لا تحتوي رموزاً أو معلومات اعتماد.
+- تأكد من صحة حساب العمولات والعملات وأسعار الصرف ومصدر سيولة الفروع وقواعد الامتثال/اعرف عميلك لدى الجهة المشغلة؛ لا توجد ضمانة بأن النماذج الحالية تمثل مزود تحويل فعلياً أو متطلباً تنظيمياً.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## الحالة
 
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+هذا المستودع هو **خلفية API ولوحة إدارة** وليس تطبيق جوال/عميل متكامل. يحتوي عدداً كبيراً من الميزات التشغيلية، لكنه يحتاج استكمال الاختبارات ومراجعة التدفقات المالية قبل اعتباره منتجاً جاهزاً للإنتاج.

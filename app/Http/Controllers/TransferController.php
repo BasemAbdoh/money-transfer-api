@@ -351,7 +351,8 @@ class TransferController extends Controller
     // ==================== تقرير الحوالات المُرسَلة ====================
     public function sentReport(Request $request)
     {
-        $query = Transfer::where('status', 'pending');
+        $query = $this->scopeTransfersForUser(Transfer::query(), $request->user())
+            ->where('status', 'pending');
 
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->start_date);
@@ -374,7 +375,8 @@ class TransferController extends Controller
     // ==================== تقرير الحوالات المستلمة (المدفوعة) ====================
     public function receivedReport(Request $request)
     {
-        $query = Transfer::where('status', 'paid');
+        $query = $this->scopeTransfersForUser(Transfer::query(), $request->user())
+            ->where('status', 'paid');
 
         if ($request->filled('start_date')) {
             $query->whereDate('updated_at', '>=', $request->start_date);
@@ -397,10 +399,11 @@ class TransferController extends Controller
     // ==================== إحصائيات الحوالات ====================
     public function stats(Request $request)
     {
-        $sentCount     = Transfer::where('status', 'pending')->count();
-        $sentTotal     = Transfer::where('status', 'pending')->sum('amount');
-        $receivedCount = Transfer::where('status', 'paid')->count();
-        $receivedTotal = Transfer::where('status', 'paid')->sum('amount');
+        $baseQuery = $this->scopeTransfersForUser(Transfer::query(), $request->user());
+        $sentCount     = (clone $baseQuery)->where('status', 'pending')->count();
+        $sentTotal     = (clone $baseQuery)->where('status', 'pending')->sum('amount');
+        $receivedCount = (clone $baseQuery)->where('status', 'paid')->count();
+        $receivedTotal = (clone $baseQuery)->where('status', 'paid')->sum('amount');
 
         return response()->json([
             'sent_count'     => $sentCount,
@@ -411,9 +414,11 @@ class TransferController extends Controller
     }
 
     // ==================== تفاصيل حوالة واحدة ====================
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $transfer = Transfer::findOrFail($id);
+        $transfer = $this->scopeTransfersForUser(Transfer::query(), $request->user())
+            ->findOrFail($id);
+
         return response()->json($transfer);
     }
 
@@ -493,11 +498,11 @@ class TransferController extends Controller
     }
 
     // ==================== جلب تاريخ الحوالة ====================
-    public function transferHistory($id)
+    public function transferHistory(Request $request, $id)
     {
-        $transfer = \App\Models\Transfer::with([
-            'historyLogs.user:id,username',
-        ])->findOrFail($id);
+        $transfer = $this->scopeTransfersForUser(Transfer::query(), $request->user())
+            ->with(['historyLogs.user:id,username'])
+            ->findOrFail($id);
 
         return response()->json([
             'transfer' => $transfer,
@@ -573,8 +578,10 @@ class TransferController extends Controller
             ->orderBy('created_at', 'desc');
 
         // المشرف يرى فقط حوالات فرعه
-        if ($user->role === 'Supervisor' && $user->branch_id) {
-            $query->where('branch_id', $user->branch_id);
+        if ($user->role === 'Supervisor') {
+            $user->branch_id
+                ? $query->where('branch_id', $user->branch_id)
+                : $query->whereRaw('1 = 0');
         }
 
         $transfers = $query->paginate(20);
@@ -615,7 +622,8 @@ class TransferController extends Controller
         ]);
 
         $user = $request->user();
-        $query = \App\Models\Transfer::with('user:id,username');
+        $query = $this->scopeTransfersForUser(\App\Models\Transfer::query(), $user)
+            ->with('user:id,username');
 
         // فلترة حسب نوع التقرير
         $type = $request->type ?? 'sent';
@@ -688,14 +696,7 @@ class TransferController extends Controller
     {
         $user = $request->user();
 
-        $query = \App\Models\Transfer::query();
-
-        // فلترة حسب الدور
-        if ($user->role === 'User') {
-            $query->where('user_id', $user->id);
-        } elseif ($user->role === 'Supervisor' && $user->branch_id) {
-            $query->where('branch_id', $user->branch_id);
-        }
+        $query = $this->scopeTransfersForUser(\App\Models\Transfer::query(), $user);
 
         // فلاتر التقرير
         if ($request->filled('start_date')) {
@@ -800,5 +801,20 @@ class TransferController extends Controller
         }
 
         return response()->json($query->get());
+    }
+
+    private function scopeTransfersForUser($query, $user)
+    {
+        if ($user->role === 'Admin') {
+            return $query;
+        }
+
+        if ($user->role === 'Supervisor') {
+            return $user->branch_id
+                ? $query->where('branch_id', $user->branch_id)
+                : $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('user_id', $user->id);
     }
 }
